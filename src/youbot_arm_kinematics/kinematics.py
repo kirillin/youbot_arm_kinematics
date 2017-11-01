@@ -5,8 +5,6 @@ from scipy import cross, dot, transpose
 import tf.transformations as tt
 import numpy as np
 
-from ploter import plotIK
-
 
 class Kinematics:
 
@@ -207,20 +205,3 @@ class Kinematics:
             while q <= -2*pi:
                 q += 2*pi
         return q
-
-
-if __name__ == '__main__':
-    DH_A = (0.033, 0.155, 0.135, 0, 0)
-    DH_ALPHA = (pi/2, 0, 0, pi/2, 0)
-    DH_D = (0.147, 0, 0, 0, 0.218)
-    DH_THETA = (PI*169.0/180.0, PI*65.0/180.0+PI/2, -PI*146.0/180.0, PI*102.5/180.0+PI/2, PI*167.5/180.0)  #theta = DH_THETA - q
-
-    # check ik
-    ks = Kinematics(DH_A, DH_ALPHA, DH_D, DH_THETA)
-
-    x, q, r, h = ks.forward([0.0, 0.0, 0.0, 0.0, 0.0])
-
-    q = ks.inverse(x, r, h)
-    print(q)
-
-    plotIK(ks, q, h)

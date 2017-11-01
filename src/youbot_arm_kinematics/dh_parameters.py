@@ -3,8 +3,8 @@ import math
 PI = math.pi
 
 
-class Config:
-
+class YouBotDHParameters:
+    """ KUKA YouBot's arm Denavit-Hartenberg parameters """
     DH_A = (0.033, 0.155, 0.135, 0, 0)
     DH_ALPHA = (PI/2, 0, 0, PI/2, 0)
     DH_D = (0.147, 0, 0, 0, 0.218)

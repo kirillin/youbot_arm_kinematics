@@ -1,9 +1,0 @@
-<launch>
-	<param name="use_gui" value="true"/>
-    <param name="robot_description" command="$(find xacro)/xacro.py '$(find youbot_description)/robots/youbot_arm_only.urdf.xacro'"/>
-
-	<node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
-	<node name="robot_state_publisher" pkg="robot_state_publisher" type="state_publisher" />
-	<node name="rviz" pkg="rviz" type="rviz" args="-d $(find youbot_arm_control)/rviz/youbot_arm_model_dh.rviz" required="true" />
-    <node pkg="tf" type="static_transform_publisher" name="ground_link" args="-0.024 0.0 0.032 0.0 0.0 0.0 ground_link base_link 100"/>
-</launch>
