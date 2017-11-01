@@ -1,0 +1,7 @@
+#for text files
+*.pdf binary
+*.png binary
+*.jpg binary
+
+#for ROS files
+*.rviz binary
