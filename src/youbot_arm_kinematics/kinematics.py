@@ -5,6 +5,7 @@ from scipy import cross, dot, transpose
 import tf.transformations as tt
 import numpy as np
 
+from youbot_arm_kinematics.dh_parameters import YouBotDHParameters
 
 class Kinematics:
 
@@ -13,6 +14,10 @@ class Kinematics:
         self.alpha = alpha
         self.d = d
         self.theta = theta
+        self.file = open('cloud.txt', 'w')
+    
+    def __del__(self):
+        self.file.close()
 
     def set_dh_parameters(self, a, alpha, d, theta):
         self.a = a
@@ -46,6 +51,8 @@ class Kinematics:
         xyz = h[:3, 3]
         qtn = tt.quaternion_from_matrix(h)
         rpy = tt.euler_from_matrix(h[:3, :3], axes='sxyz')
+        print(h)
+        print(xyz, rpy)
         return xyz, qtn, rpy, h
 
 
@@ -135,7 +142,9 @@ class Kinematics:
         denominator_0 = 2 * self.a[1] * self.a[2]
         # for singulars \pm pi/2 and \pm pi plus 100 * eps with sign of numerator
         cosq3_I = numerator_0 / denominator_0 - np.sign(numerator_0) * 100 * eps
-
+        print(numerator_0 )
+        print(denominator_0)
+        print(cosq3_I)
         if cosq3_I <= 1:
             theta_3_I = -atan2(sqrt(1.0 - cosq3_I ** 2), cosq3_I)
             theta_3_II = atan2(sqrt(1.0 - cosq3_I ** 2), cosq3_I)
@@ -205,3 +214,27 @@ class Kinematics:
             while q <= -2*pi:
                 q += 2*pi
         return q
+        
+    def checkOnLimits(self, q, limits):
+        """ q is vector"""
+        n = len(q)
+        state = [False for i in range(n)]
+        print('***')
+        print(n)
+        for i in range(n):
+            print(q[i], limits[i])
+            if limits[i][0] < q[i] < limits[i][1]:
+                state[i] = True
+
+        print('***')
+        if all(state):
+            return 1
+        else:
+            return 0
+
+
+if __name__ == '__main__':
+    ks = Kinematics(YouBotDHParameters.DH_A, YouBotDHParameters.DH_ALPHA,
+                    YouBotDHParameters.DH_D, YouBotDHParameters.DH_THETA)
+
+    ks.forward([10.0, 2.0, 3.0, 4.0, 5.0], 0, 5)
