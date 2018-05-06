@@ -18,6 +18,22 @@ class FKtest {
       q(i) = js->position[i];
     }
 
+    /*! Compute and test Jacobi matrices*/
+    Matrix<double, 6, N> J; /* just Jacobi matrix*/
+    Matrix<double, N, 6> piJ;  /* pseudo inversed Jacobi matrix, that above */
+    Matrix<double, N, 6> piJ2;  /* pseudo inversed Jacobi matrix, analytic */
+    ks.get_jacobi(q, J);
+    ks.get_pinv_jacobi_num(q, piJ);
+    ks.get_pinv_jacobi(q, piJ2);
+
+    cout << "\nJ =\n" << J << endl;
+    cout << "piJ_num ="
+         << (piJ * piJ.transpose()).determinant()
+         << endl << piJ << endl;
+    cout << "piJ_alg =\n"
+         << (piJ2 * piJ2.transpose()).determinant()
+         << endl << piJ2 << endl << endl;
+
     Vector6d s = ks.forward(q, 0, 5);
     cout << "s: " << s.transpose() << endl; // [x y z r p y]
 
@@ -31,7 +47,7 @@ class FKtest {
   }
 
   void spin() {
-    ros::Rate R(30);
+    ros::Rate R(100);
     while(_nh.ok()) {
       ros::spinOnce();
       R.sleep();

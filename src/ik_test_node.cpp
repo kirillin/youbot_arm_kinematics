@@ -73,19 +73,6 @@ int main(int argc, char** argv) {
   IKtest ik(ks);
   ik.spin();
 
-//  // FK test
-//  Vector5f q; q << 0,0,0,0,0;
-//  Vector6f s = ks.forward(q, 0, 5);
-//
-//   // IK test
-////  Vector6f s; s << 1,1,1,0.1,0.5,2;
-//
-//  QS qs = ks.inverse(s);
-//  cout << qs.q1.transpose() << endl;
-//  cout << qs.q2.transpose() << endl;
-//  cout << qs.q3.transpose() << endl;
-//  cout << qs.q4.transpose() << endl;
-//  cout << qs.sols << endl;
 
   return 0;
 }

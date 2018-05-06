@@ -23,8 +23,9 @@ catkin_install_python(PROGRAMS scripts/fk_test scripts/ik_test
                       DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 add_library(libkinematics src/kinematics.cpp)
+target_link_libraries(libkinematics ${catkin_LIBRARIES})
 
-add_executable(fk_test_node src/fk_test_node.cpp)
+add_executable(fk_test_node src/fk_test_node.cpp src/jacobi.cpp)
 target_link_libraries(fk_test_node libkinematics ${catkin_LIBRARIES})
 add_dependencies(fk_test_node ${catkin_EXPORTED_TARGETS})
 

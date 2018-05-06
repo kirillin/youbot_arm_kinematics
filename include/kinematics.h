@@ -58,12 +58,15 @@ class Kinematics {
   Kinematics() {};
   Kinematics(VectorNd _a, VectorNd _alpha, VectorNd _d, VectorNd _theta);
 
-  Vector6d forward(VectorNd q, int from, int to);
+  Vector6d forward(VectorNd q, int from=0, int to=5);
   ConfigurationsOfManipulator inverse(Vector6d s);
+
+  void get_jacobi(VectorNd q, Matrix<double, 6, N>& J);
+  void get_pinv_jacobi_num(VectorNd q, Matrix<double, N, 6>& J);
+  void get_pinv_jacobi(VectorNd q, Matrix<double, N, 6>& J);
 
   Vector3d get_vector_1to4_frame(double theta, Matrix<double, 3, 3> pr, Vector3d p);
   double normalized_angle(double q, int j);
-
   // bool check_on_limits(VectorNd q, Matrix5d limits);
 
   // void workspace_random_movements();
