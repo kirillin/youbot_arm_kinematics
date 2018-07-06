@@ -16,19 +16,35 @@ catkin_python_setup()
 
 add_service_files(FILES IK.srv)
 generate_messages(DEPENDENCIES std_msgs)
-catkin_package(CATKIN_DEPENDS message_runtime std_msgs)
-include_directories(include ${catkin_INCLUDE_DIRS})
+
+catkin_package(
+    INCLUDE_DIRS include 
+    LIBRARIES libkinematics
+    CATKIN_DEPENDS message_runtime
+)
+
+include_directories(include include/youbot_arm_kinematics ${catkin_INCLUDE_DIRS})
 
 catkin_install_python(PROGRAMS scripts/fk_test scripts/ik_test
                       DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
-add_library(libkinematics src/kinematics.cpp)
-target_link_libraries(libkinematics ${catkin_LIBRARIES})
+add_library(libkinematics src/kinematics.cpp src/jacobi.cpp)
+target_link_libraries(libkinematics  ${catkin_LIBRARIES})
 
-add_executable(fk_test_node src/fk_test_node.cpp src/jacobi.cpp)
+add_executable(fk_test_node src/fk_test_node.cpp)
 target_link_libraries(fk_test_node libkinematics ${catkin_LIBRARIES})
 add_dependencies(fk_test_node ${catkin_EXPORTED_TARGETS})
 
 add_executable(ik_test_node src/ik_test_node.cpp)
 target_link_libraries(ik_test_node libkinematics ${catkin_LIBRARIES})
 add_dependencies(ik_test_node ${catkin_EXPORTED_TARGETS})
+
+install(TARGETS libkinematics
+  ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
+  RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
+
+install(DIRECTORY include/${PROJECT_NAME}/
+  DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
+)

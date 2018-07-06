@@ -1,0 +1,148 @@
+#!/usr/bin/env python
+import rospy
+import tf
+import tf.transformations as tftr
+import numpy as np
+from numpy import pi
+
+from youbot_arm_kinematics.srv import IK
+from sensor_msgs.msg import JointState
+from brics_actuator.msg import JointPositions, JointValue
+
+from youbot_arm_kinematics.kinematics import Kinematics
+from youbot_arm_kinematics.kinematics import Trajectory
+from youbot_arm_kinematics.dh_parameters import YouBotDHParameters
+
+CYLINDER_LIMIT_HEIGHT = 0.4
+CYLINDER_LIMIT_R = 0.15
+CYLINDER_LIMIT_X_CENTER = 0
+CYLINDER_LIMIT_Y_CENTER = 0
+
+LIMITS_J1 = [0, pi*169/180 + pi*169/180]
+LIMITS_J2 = [0, pi*90/180 + pi*65/180]
+LIMITS_J3 = [-(pi*146/180 + pi*151/180), 0]
+LIMITS_J4 = [0, pi*102.5/180 + pi*102.5/180]
+LIMITS_J5 = [0, pi*167.5/180 + pi*167.5/180+1]
+LIMITS = [LIMITS_J1,LIMITS_J2,LIMITS_J3,LIMITS_J4,LIMITS_J5]
+
+
+class IKinematics:
+
+    def __init__(self):
+        self.pubJointState = rospy.Publisher("/arm_1/arm_controller/position_command", JointPositions, queue_size=1)
+        self.ks = Kinematics(YouBotDHParameters.DH_A, YouBotDHParameters.DH_ALPHA,
+                             YouBotDHParameters.DH_D, YouBotDHParameters.DH_THETA)
+        self.file = open('cloud.txt', 'w')     
+        self.fl = open('xya.txt', 'w')
+        self.fl2 = open('q.txt', 'w')
+        self.loop()
+
+    def __del__(self):
+        self.file.close()
+        self.fl.close()
+        self.fl2.close()
+        
+    def handle(self, req):
+        xyz = req.xyz
+        rpy = req.rpy
+        qtn = tftr.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+
+        # protect manipulator from itself
+        point = (xyz[0] - CYLINDER_LIMIT_X_CENTER)**2 + (xyz[1] - CYLINDER_LIMIT_Y_CENTER)**2
+        if xyz[2] <= CYLINDER_LIMIT_HEIGHT and point <= CYLINDER_LIMIT_R**2:
+            return 0
+
+        # set transformation to tool_link
+        br = tf.TransformBroadcaster()
+        br.sendTransform(xyz, qtn, rospy.Time.now(), 'tool_link', "ground_link")
+
+        print("xyzrpy", xyz, rpy)
+        # solve IK problem
+        q, soluts = self.ks.inverse(xyz, rpy)
+        
+        if not self.ks.checkOnLimits(q[0], LIMITS):
+            return 0
+        #
+        if soluts != [False, False]:
+            # select first solve from two
+            rospy.loginfo("found Qs: %s" % str(q))
+            q = q[0]
+            
+            self.fl2.write("{} {} {} {} {}\n".format(q[0], q[1], q[2], q[3], q[4]))      
+            
+            positions = []            
+            for i in range(1,6):
+                jv = JointValue()
+                jv.timeStamp = rospy.Time.now()
+                jv.joint_uri = "arm_joint_" + str(i)
+                jv.unit = 'rad'
+                jv.value = q[i-1]
+                positions.append(jv)
+            
+            jp = JointPositions()
+            jp.positions = positions
+            self.pubJointState.publish(jp)
+            
+            return 1
+        return 0
+
+    def loop(self):
+        rospy.init_node('ik_test')
+        rospy.Service('ik', IK, self.handle)
+        #print "Ready to set pos and ori. Run 'rosservice call /ik ''"
+        #
+        rospy.wait_for_service('ik')
+        ik = rospy.ServiceProxy('ik', IK)
+        
+
+        freq = 20.
+        r = rospy.Rate(freq)
+        dt = 1/freq
+        Rc = 0.9
+        v_max = 0.2
+        theta_s = pi - pi/18
+        theta_f = pi + pi/18  
+        
+        alpha0 = -pi/2+0.1
+
+        ts = 0
+        tf = pi * Rc * (theta_f - theta_s) / v_max
+
+        t = np.arange(ts, tf, dt)
+        
+        tj = Trajectory(Rc, theta_s, theta_f, alpha0, v_max, t, dt)
+        
+        R = np.array([
+                [0,-1,0,0],
+                [1,0,0,0],
+                [0,0,1,0],
+                [0,0,0,1]
+        ])
+
+        T = np.array([
+            [1,0,0,1.15],
+            [0,1,0,0],
+            [0,0,1,0],
+            [0,0,0,1]    
+        ])
+        
+        z = 0.015
+        ti = 0
+        while not rospy.is_shutdown():
+            if ti <= tf:
+                x,y,a = tj.getCirclePoint(ti)    
+                xyz = T.dot(np.transpose([x,y,z,1]))
+                xyz = xyz[:3]
+                rpy = (3.1415,0,a)
+                self.fl.write("{} {} {} {}\n".format(xyz[0], xyz[1], a, ti))      
+                ti = ti + dt
+                try:
+                    resp = ik(xyz, rpy)
+                except rospy.ServiceException, e:
+                    print "Service call failed: %s"%e
+                print(resp, xyz)
+        
+            r.sleep()
+
+if __name__ == "__main__":
+    IKinematics()

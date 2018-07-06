@@ -1,0 +1,146 @@
+#!/usr/bin/env python
+import rospy
+import tf
+import tf.transformations as tftr
+import numpy as np
+from numpy import pi
+
+from youbot_arm_kinematics.srv import IK
+from sensor_msgs.msg import JointState
+from brics_actuator.msg import JointPositions, JointValue
+
+from youbot_arm_kinematics.kinematics import Kinematics
+from youbot_arm_kinematics.dh_parameters import YouBotDHParameters
+
+CYLINDER_LIMIT_HEIGHT = 0.4
+CYLINDER_LIMIT_R = 0.15
+CYLINDER_LIMIT_X_CENTER = 0
+CYLINDER_LIMIT_Y_CENTER = 0
+
+LIMITS_J1 = [0, pi*169/180 + pi*169/180]
+LIMITS_J2 = [0, pi*90/180 + pi*65/180]
+LIMITS_J3 = [-(pi*146/180 + pi*151/180), 0]
+LIMITS_J4 = [0, pi*102.5/180 + pi*102.5/180]
+LIMITS_J5 = [0, pi*167.5/180 + pi*167.5/180+1]
+LIMITS = [LIMITS_J1,LIMITS_J2,LIMITS_J3,LIMITS_J4,LIMITS_J5]
+
+
+class IKinematics:
+
+    def __init__(self):
+        #self.pubJointState = rospy.Publisher("joint_states", JointState,queue_size=1)
+        self.pubJointState = rospy.Publisher("/arm_1/arm_controller/position_command", JointPositions, queue_size=1)
+                                             
+        self.ks = Kinematics(YouBotDHParameters.DH_A, YouBotDHParameters.DH_ALPHA,
+                             YouBotDHParameters.DH_D, YouBotDHParameters.DH_THETA)
+        self.file = open('cloud.txt', 'w')     
+        self.loop()
+
+    def __del__(self):
+        self.file.close()
+        
+    def handle(self, req):
+        xyz = req.xyz
+        rpy = req.rpy
+        qtn = tftr.quaternion_from_euler(rpy[0], rpy[1], rpy[2])
+
+        # protect manipulator from itself
+        point = (xyz[0] - CYLINDER_LIMIT_X_CENTER)**2 + (xyz[1] - CYLINDER_LIMIT_Y_CENTER)**2
+        if xyz[2] <= CYLINDER_LIMIT_HEIGHT and point <= CYLINDER_LIMIT_R**2:
+            return 0
+
+        # set transformation to tool_link
+        br = tf.TransformBroadcaster()
+        br.sendTransform(xyz, qtn, rospy.Time.now(), 'tool_link', "ground_link")
+
+        print("xyzrpy", xyz, rpy)
+        # solve IK problem
+        q, soluts = self.ks.inverse(xyz, rpy)
+        
+        if not self.ks.checkOnLimits(q[0], LIMITS):
+            return 0
+        #
+        if soluts != [False, False]:
+            # select first solve from two
+            rospy.loginfo("found Qs: %s" % str(q))
+            q = q[0]
+
+            # publish joint positions
+            
+            positions = []            
+            for i in range(1,6):
+                jv = JointValue()
+                jv.timeStamp = rospy.Time.now()
+                jv.joint_uri = "arm_joint_" + str(i)
+                jv.unit = 'rad'
+                jv.value = q[i-1]
+                positions.append(jv)
+            
+            jp = JointPositions()
+            jp.positions = positions
+            self.pubJointState.publish(jp)
+            return 1
+        return 0
+
+    def loop(self):
+        rospy.init_node('ik_test')
+        rospy.Service('ik', IK, self.handle)
+        #print "Ready to set pos and ori. Run 'rosservice call /ik ''"
+        #
+        # rospy.wait_for_service('ik')
+        # ik = rospy.ServiceProxy('ik', IK)
+        #
+        # xyz = [0.314, 0, 0]
+        # rpy = [0, pi, 0]
+        # state = [1, 0, 0]
+        # step = 0.01
+        # stepback = 4
+        # kx, ky = -1, -1
+        # cond = 0
+        # qty_points = 0
+        #
+        r = rospy.Rate(300)
+        while not rospy.is_shutdown():
+            # resp = 0
+            # x = np.random.random() * (0.315 + 0.315) - 0.315
+            # y = np.random.random() * (0.315 + 0.315) - 0.315
+            # z = np.random.random() * (0.20 + 0.35) - 0.20
+            # xyz = [x,y,z]
+            #
+            # try:
+            #     resp = ik(xyz, rpy)
+            # except rospy.ServiceException, e:
+            #     print "Service call failed: %s"%e
+            # print(resp, xyz)
+            #
+            #
+            # if resp.achievable == 1:
+            #     self.file.write("{0} {1} {2}\n".format(xyz[0], xyz[1], xyz[2]))
+            #
+            r.sleep()
+            
+    def trash(self):
+        if qty_points > 100:
+            xyz[2] += step
+        if resp.achievable == 1:
+            xyz[1] += ky * step
+            cond = 0                    
+        elif resp.achievable == 0:
+            if cond >= 2: # no achiveble from y second time
+                xyz[1] -= -stepback * ky * step
+                kx, ky = -kx, -ky
+                xyz[0] += stepback * kx * step
+                xyz = [xyz[0], -xyz[1], xyz[2]]
+                cond = 0
+            else:
+                xyz[1] -= stepback * ky * step
+                xyz[0] += kx * step
+                ky *= -1
+                cond += 1
+                if cond >= 1: # no achiveble from x
+                    xyz[1] -= -stepback * ky * step
+            self.file.write("{0} {1} {2}\n".format(xyz[0], xyz[1], xyz[2]))
+            qty_points += 1
+
+if __name__ == "__main__":
+    IKinematics()
