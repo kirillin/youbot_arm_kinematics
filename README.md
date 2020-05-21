@@ -1,3 +1,5 @@
+[![buddy pipeline](https://app.buddy.works/kaartemov/youbot-arm-kinematics/pipelines/pipeline/258014/badge.svg?token=130392331c15d2f87dbae0703e90a5923e866f8996242112dff97e3a139fdc3e "buddy pipeline")](https://app.buddy.works/kaartemov/youbot-arm-kinematics/pipelines/pipeline/258014)
+
 [![CodeFactor](https://www.codefactor.io/repository/github/kirillin/youbot_arm_kinematics/badge/develop)](https://www.codefactor.io/repository/github/kirillin/youbot_arm_kinematics/overview/develop)
 
 # Manipulators kinematics
